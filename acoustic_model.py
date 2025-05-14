@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import pandas as pd
 import ast
-from text_preprocess import G2PConverter
+from acoustic.text_preprocess import G2PConverter
 from keras.saving import register_keras_serializable
 
 def create_dataset_fast(texts, mel_paths, input_length=168, mel_dim=80, mel_max_len=900, batch_size=32):

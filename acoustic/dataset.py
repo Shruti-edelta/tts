@@ -181,7 +181,6 @@ class LJSpeechPreprocessor:
                 np.save(path, mel)  # overwrite with normalized mel
             except Exception as e:
                 print(f"❌ Error normalizing {path}: {e}")
-            
 
         print("** padded mel : ",s)
 
@@ -213,7 +212,7 @@ class LJSpeechPreprocessor:
 
 # === Usage Example ===
 if __name__ == "__main__":
-    from text_preprocess import TextNormalizer,G2PConverter
+    from acoustic.text_preprocess import TextNormalizer,G2PConverter
 
     preprocessor = LJSpeechPreprocessor(
         dataset_path="dataset/LJSpeech/",

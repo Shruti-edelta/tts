@@ -7,7 +7,7 @@ import ast
 import pickle
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from text_preprocess import G2PConverter
+from acoustic.text_preprocess import G2PConverter
 from tensorflow.keras import layers
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.callbacks import TensorBoard

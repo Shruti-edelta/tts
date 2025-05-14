@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import ast
-from text_preprocess import G2PConverter
+from acoustic.text_preprocess import G2PConverter
 import soundfile as sf
 import librosa
 from keras.saving import register_keras_serializable

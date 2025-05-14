@@ -6,7 +6,7 @@ import librosa.display
 import soundfile as sf
 import matplotlib.pyplot as plt
 import pickle
-from text_preprocess  import TextNormalizer
+from acoustic.text_preprocess  import TextNormalizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt

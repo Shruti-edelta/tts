@@ -1,7 +1,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-from text_preprocess import G2PConverter
+from acoustic.text_preprocess import G2PConverter
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import librosa
 import ast

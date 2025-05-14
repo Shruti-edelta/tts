@@ -2,6 +2,8 @@ import numpy as np
 import noisereduce as nr
 import librosa
 import soundfile as sf
+# from acoustic.text_preprocess import G2PConverter
+
 
 y, sr = librosa.load("../LJ001-0001.wav", sr=None)
 print(librosa.get_duration(y=y,sr=sr))

@@ -308,7 +308,7 @@ class G2PConverter:
         # predicted_phonemes.append([self.phn2idx['<eos>']])
         # print("======",predicted_phonemes)
         flat_phonemes = [p for word in predicted_phonemes for p in word] 
-        return predicted_phonemes
+        return flat_phonemes
     
     def batch_predict(self, texts):
         # Step 1: Preprocess each sentence into list of words
