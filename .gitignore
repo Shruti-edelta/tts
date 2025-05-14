@@ -1,0 +1,7 @@
+dataset/
+env/
+__pycache__/
+model/
+.vscode/
+checkpoints/
+logs/

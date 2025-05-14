@@ -1,0 +1,15 @@
+tensorflow
+numpy
+librosa
+torch
+pandas
+tqdm
+contractions
+word2number
+pronouncing
+phonemizer
+matplotlib
+g2p-en
+num2words
+noisereduce
+pydub
