@@ -13,9 +13,6 @@ import librosa
 from keras.saving import register_keras_serializable
 import keras
 
-def mel_to_audio(mel_spectrogram, sr=22050):
-    mel_inv = librosa.feature.inverse.mel_to_audio(mel_spectrogram, sr=sr)
-    return mel_inv
 
 # @tf.keras.utils.register_keras_serializable()
 @register_keras_serializable()
@@ -32,9 +29,9 @@ class CropLayer(tf.keras.layers.Layer):
         config.update({'target_length': self.length})
         return config
 
-best_model = tf.keras.models.load_model("model/2/best_model_cnn.keras", compile=False,custom_objects={'CropLayer': CropLayer})
+best_model = tf.keras.models.load_model("model/2/2best_model_cnn_9f.keras", compile=False,custom_objects={'CropLayer': CropLayer})
 
-g2p = G2PConverter("model/1/1model_cnn.keras")
+g2p = G2PConverter("model/1/3model_cnn.keras")
 
 text = "This is a test"
 phonemes = g2p.predict(text)  # use your G2P model

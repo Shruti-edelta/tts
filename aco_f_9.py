@@ -1,3 +1,5 @@
+import os
+import datetime
 import tensorflow as tf
 import numpy as np
 import pandas as pd
@@ -12,8 +14,6 @@ from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.metrics import CosineSimilarity
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from keras.saving import register_keras_serializable
-import os
-import datetime
 
 
 # def create_dataset_fast(texts, mel_paths, input_length=200, mel_dim=80, mel_max_len=1024, batch_size=32):
