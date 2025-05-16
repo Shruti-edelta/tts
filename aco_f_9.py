@@ -65,7 +65,7 @@ def create_dataset_fast(texts, mel_paths, batch_size=32, shuffle=True):
     if shuffle:
         dataset = dataset.shuffle(buffer_size=10000)    
     dataset = dataset.map(lambda x, y: parse_data(x, y), num_parallel_calls=tf.data.AUTOTUNE)
-    dataset=dataset.cache()
+    # dataset=dataset.cache()
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
     return dataset
@@ -150,7 +150,6 @@ def build_acoustic_model(vocab_size, input_length=163, mel_dim=80, mel_len=865, 
     embedding = layers.Embedding(input_dim=vocab_size, output_dim=embed_dim, mask_zero=True)
     x = embedding(inputs)
     mask = embedding.compute_mask(inputs)
-
     # Positional embeddings (learnable)
     pos_embedding = layers.Embedding(input_dim=input_length, output_dim=embed_dim)
     positions = tf.range(start=0, limit=input_length, delta=1)
@@ -206,14 +205,24 @@ def compile_model(model):
     def spectral_convergence_loss(y_true, y_pred):
         return tf.norm(y_true - y_pred, ord='fro', axis=[-2, -1]) / tf.norm(y_true, ord='fro', axis=[-2, -1])
 
+    # def log_mel_loss(y_true, y_pred):
+    #     return tf.reduce_mean(tf.math.log(y_true + 1e-6) - tf.math.log(y_pred + 1e-6))
+
     def log_mel_loss(y_true, y_pred):
-        return tf.reduce_mean(tf.abs(tf.math.log(y_true + 1e-6) - tf.math.log(y_pred + 1e-6)))
+        epsilon = 1e-5
+        y_true = tf.nn.relu(y_true)
+        y_pred = tf.nn.relu(y_pred)
+        
+        log_true = tf.math.log(y_true + epsilon)
+        log_pred = tf.math.log(y_pred + epsilon)
+        
+        return tf.reduce_mean(tf.abs(log_true - log_pred))  # L1 in log-mel space
 
     def combined_loss(y_true, y_pred):
         mse = tf.reduce_mean(tf.square(y_true - y_pred))
         sc_loss = spectral_convergence_loss(y_true, y_pred)
         log_loss = log_mel_loss(y_true, y_pred)
-        return mse + 0.5 * sc_loss 
+        return mse + 0.5 * sc_loss + 0.5 * log_loss
     
     model.compile(optimizer=optimizer,
                   loss=combined_loss,
@@ -262,8 +271,6 @@ vocab_size = len(g2p.phn2idx)
 # ==================== Build & Train =====================
 
 
-
-
 # model = build_acoustic_model(vocab_size, input_length)
 model = build_acoustic_model(vocab_size)
 model = compile_model(model)
@@ -271,33 +278,33 @@ model.summary()
 
 # Set up log directory with timestamp
 log_dir = os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1,write_graph=True,write_images=True)
 
 callbacks = [
-    EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True, verbose=1),
-    ModelCheckpoint('model/2/best_model_cnn_9f.keras', monitor='val_loss', save_best_only=True, verbose=1),
+    EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, verbose=1),
+    ModelCheckpoint('model/2/best_model_cnn_9f_log.keras', monitor='val_loss', save_best_only=True, verbose=1),
     LRSchedulerLogger(),
     LearningRatePlotter(),
     tensorboard_callback , # 👈 Add this line,
     # TensorBoard(log_dir="logs", histogram_freq=1)  # 👈 This logs training info
 ]
 
-history = model.fit(
-    train_dataset,
-    epochs=50,
-    validation_data=val_dataset,
-    callbacks=callbacks
-)
+# history = model.fit(
+#     train_dataset,
+#     epochs=150,
+#     validation_data=val_dataset,
+#     callbacks=callbacks
+# )
 
-# Save model & history
-model.save('model/2/acoustic_model_cnn_9f.keras')
-model.save_weights('model/2/acoustic_model_cnn_9f.weights.h5')
-history_df = pd.DataFrame(history.history)
-history_df.to_csv('model/2/acoustic_model_cnn_9f.csv', index=False)
+# # Save model & history
+# model.save('model/2/best_model_cnn_9f_log.keras')
+# model.save_weights('model/2/best_model_cnn_9f_log.weights.h5')
+# history_df = pd.DataFrame(history.history)
+# history_df.to_csv('model/2/best_model_cnn_9f_log.csv', index=False)
 
-# ==================== Evaluation =====================
-test_loss = model.evaluate(test_dataset)
-print(f"Test loss: {test_loss}")
+# # ==================== Evaluation =====================
+# test_loss = model.evaluate(test_dataset)
+# print(f"Test loss: {test_loss}")
 
 
 

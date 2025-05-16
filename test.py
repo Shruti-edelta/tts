@@ -9,6 +9,8 @@ from acoustic.text_preprocess import G2PConverter,TextNormalizer  #relative path
 import soundfile as sf
 import librosa
 import keras
+from keras.config import enable_unsafe_deserialization
+enable_unsafe_deserialization()
 
 # @tf.keras.utils.register_keras_serializable()
 @register_keras_serializable()
@@ -66,6 +68,24 @@ class AttentionContextLayer(tf.keras.layers.Layer):
         context_expanded = tf.expand_dims(context_vector, axis=1)
         context_expanded = tf.tile(context_expanded, [1, self.input_length, 1])
         return tf.concat([values, context_expanded], axis=-1)
+    
+@tf.keras.utils.register_keras_serializable()
+class PositionalEncoding(tf.keras.layers.Layer):
+    def __init__(self, input_length, embed_dim, **kwargs):
+        super(PositionalEncoding, self).__init__(**kwargs)
+        self.pos_embedding = tf.keras.layers.Embedding(input_dim=input_length, output_dim=embed_dim)
+
+    def call(self, x):
+        seq_len = tf.shape(x)[1]
+        positions = tf.range(start=0, limit=seq_len, delta=1)
+        positions = tf.expand_dims(positions, 0)
+        pos_encoded = self.pos_embedding(positions)
+        return pos_encoded
+
+@tf.keras.utils.register_keras_serializable()
+class LastTimestep(tf.keras.layers.Layer):
+    def call(self, inputs):
+        return inputs[:, -1, :]
 
 def mel_to_audio_griffin_lim(mel_db, mean, std, sr=22050, n_fft=2048, hop_length=256, win_length=2048, n_mels=80, fmax=8000):
 
@@ -84,15 +104,17 @@ def mel_to_audio_griffin_lim(mel_db, mean, std, sr=22050, n_fft=2048, hop_length
     print(librosa.get_duration(y=audio))
     return audio
 
-best_model = tf.keras.models.load_model("model/2/2best_model_cnn_9f.keras", compile=False,custom_objects={'CropLayer': CropLayer})
+best_model = tf.keras.models.load_model("model/2/best_model_cnn_9f.keras", compile=False,custom_objects={'CropLayer': CropLayer})
 g2p = G2PConverter("model/1/3model_cnn.keras")
 normalizer=TextNormalizer()
 
 text = "This is a test"
 text = "However, it now laid down in plain language and with precise details the requirements of a good jail system."
-# text = "The first step is to identify the problem and its root cause."
-# text = "The second step is to develop a plan to address the problem."  ### sir
-text = "The third step is to implement the plan."
+text = "The first step is to identify the problem and its root cause."
+text = "The second step is to develop a plan to address the problem."  # ****
+# text = "The third step is to implement the plan."
+# text="shruti mungra"
+# text="hello world"
 
 normalized_text = normalizer.normalize_text(text)
 phonemes=g2p.predict(normalized_text['normalized_text'])
@@ -107,7 +129,8 @@ print("predicted_mel(input): ",predicted_mel)
 mean,std = np.load("dataset/acoustic_dataset/mel_mean_std.npy")
 audio=mel_to_audio_griffin_lim(predicted_mel, mean, std)
 print("audio: ",audio)
-sf.write('audio/cnn/2best_model_9f_t1.wav', audio, 22050) 
+sf.write('audio/cnn/best_model_9f_t2_e8.wav', audio, 22050) 
+# sf.write('audio/cnn/best_model_9f_t2_e3.wav', audio, 22050) 
 
 # Plot it
 plt.imshow(predicted_mel.T, aspect='auto', origin='lower')
@@ -115,6 +138,8 @@ plt.title("Predicted Mel for custom sentence")
 plt.show()
 
 # =================== test_data ====================
+
+'''
 
 def preprocess_testdata(texts, mel_spectrograms, input_length=256,mel_max_len=1024):
     # print(texts[0])
@@ -168,5 +193,4 @@ plt.tight_layout()
 plt.show()
 
 
-
-
+'''
