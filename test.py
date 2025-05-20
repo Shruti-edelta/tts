@@ -104,14 +104,15 @@ def mel_to_audio_griffin_lim(mel_db, mean, std, sr=22050, n_fft=2048, hop_length
     print(librosa.get_duration(y=audio))
     return audio
 
-best_model = tf.keras.models.load_model("model/2/best_model_cnn_9f.keras", compile=False,custom_objects={'CropLayer': CropLayer})
+best_model = tf.keras.models.load_model("model/2/best_model_cnn_9f_log.keras", compile=False,custom_objects={'CropLayer': CropLayer})
 g2p = G2PConverter("model/1/3model_cnn.keras")
 normalizer=TextNormalizer()
 
 text = "This is a test"
 text = "However, it now laid down in plain language and with precise details the requirements of a good jail system."
 text = "The first step is to identify the problem and its root cause."
-text = "The second step is to develop a plan to address the problem."  # ****
+text="The second step we have taken in the restoration of normal business enterprise"
+# text = "The second step "#is to develop a plan to address the problem."  # ****
 # text = "The third step is to implement the plan."
 # text="shruti mungra"
 # text="hello world"
@@ -129,8 +130,8 @@ print("predicted_mel(input): ",predicted_mel)
 mean,std = np.load("dataset/acoustic_dataset/mel_mean_std.npy")
 audio=mel_to_audio_griffin_lim(predicted_mel, mean, std)
 print("audio: ",audio)
-sf.write('audio/cnn/best_model_9f_t2_e8.wav', audio, 22050) 
-# sf.write('audio/cnn/best_model_9f_t2_e3.wav', audio, 22050) 
+# sf.write('audio/cnn/best_model_9f_t2_log_e8_f.wav', audio, 22050) 
+sf.write('audio/cnn/best_model_9f_t2_ef.wav', audio, 22050) 
 
 # Plot it
 plt.imshow(predicted_mel.T, aspect='auto', origin='lower')
@@ -138,8 +139,6 @@ plt.title("Predicted Mel for custom sentence")
 plt.show()
 
 # =================== test_data ====================
-
-'''
 
 def preprocess_testdata(texts, mel_spectrograms, input_length=256,mel_max_len=1024):
     # print(texts[0])
@@ -152,8 +151,8 @@ phoneme_seq = df_test['Phoneme_text'].apply(ast.literal_eval).values
 mel_spectrograms_test = df_test['Read_npy'].values
 
 test_text, test_mel = preprocess_testdata(phoneme_seq, mel_spectrograms_test)
-x_test = np.expand_dims(test_text[0], axis=0)  # Adding a batch dimension
-y_true = np.expand_dims(test_mel[0], axis=0)  # Adding a batch dimension)
+x_test = np.expand_dims(test_text[1], axis=0)  # Adding a batch dimension
+y_true = np.expand_dims(test_mel[1], axis=0)  # Adding a batch dimension)
 
 # test_loss = model.evaluate(x_test, y_true)
 # print(f"Test loss: {test_loss}")
@@ -193,4 +192,7 @@ plt.tight_layout()
 plt.show()
 
 
+'''
+ conda activate mfa-env
+ conda deactivate
 '''

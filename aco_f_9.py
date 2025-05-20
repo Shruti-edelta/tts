@@ -14,7 +14,7 @@ from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.metrics import CosineSimilarity
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from keras.saving import register_keras_serializable
-
+# import tensorflow_addons as tfa
 
 # def create_dataset_fast(texts, mel_paths, input_length=200, mel_dim=80, mel_max_len=1024, batch_size=32):
 #     def load_and_preprocess_py(text, mel_path):
@@ -122,7 +122,6 @@ class AttentionContextLayer(tf.keras.layers.Layer):
     def call(self, inputs):
         query, values, mask = inputs
         context_vector, _ = self.attention(query, values, mask=mask)
-        
         # Expand context and concatenate with sequence
         context_expanded = tf.expand_dims(context_vector, axis=1)
         context_expanded = tf.tile(context_expanded, [1, self.input_length, 1])
@@ -157,11 +156,11 @@ def build_acoustic_model(vocab_size, input_length=163, mel_dim=80, mel_len=865, 
     x = x + pos_encoded
 
     # BiLSTM stack
-    x = layers.Bidirectional(layers.LSTM(512, return_sequences=True))(x, mask=mask)
+    x = layers.Bidirectional(layers.LSTM(512, return_sequences=True,dropout=0.3))(x, mask=mask)
     # x = layers.Dropout(0.3)(x)
-    x = layers.Bidirectional(layers.LSTM(512, return_sequences=True))(x, mask=mask)
-    x = layers.Dropout(0.3)(x)
-    x = layers.Bidirectional(layers.LSTM(128, return_sequences=True))(x, mask=mask)
+    x = layers.Bidirectional(layers.LSTM(512, return_sequences=True,dropout=0.3))(x, mask=mask)
+    # x = layers.Dropout(0.3)(x)
+    x = layers.Bidirectional(layers.LSTM(128, return_sequences=True,dropout=0.3))(x, mask=mask)
     # x = layers.Dropout(0.3)(x)
 
     # Residual CNN blocks
@@ -173,6 +172,11 @@ def build_acoustic_model(vocab_size, input_length=163, mel_dim=80, mel_len=865, 
         x = layers.Add()([x, residual])
 
     query = layers.GlobalAveragePooling1D()(x)
+    # Try using a learnable query token:
+    # query_token = self.add_weight("query_token", shape=(1, 1, 1024), initializer="random_normal", trainable=True)
+    # batch_size = tf.shape(x)[0]
+    # query = tf.tile(query_token, [batch_size, 1, 1])
+    # context, _ = self.attention(query, x, mask=mask)  # You may need to adapt shape
     x = AttentionContextLayer(units=256, input_length=input_length)([query, x, mask])
 
     # Upsample
@@ -189,6 +193,14 @@ def build_acoustic_model(vocab_size, input_length=163, mel_dim=80, mel_len=865, 
     for _ in range(5):
         postnet = layers.Conv1D(filters=mel_dim, kernel_size=5, padding='same', activation='tanh')(postnet)
         postnet = layers.BatchNormalization()(postnet)
+
+    for i in range(5):
+        activation = 'tanh' if i < 4 else None
+        postnet = layers.Conv1D(mel_dim, kernel_size=5, padding='same', activation=activation)(postnet)
+        if i < 4:
+            postnet = layers.BatchNormalization()(postnet)
+            postnet = layers.Dropout(0.1)(postnet)
+
     mel_output = layers.Add(name="refined_mel_output")([mel_output, postnet])
 
     model = tf.keras.Model(inputs=inputs, outputs=mel_output)
@@ -200,7 +212,9 @@ def compile_model(model):
             decay_steps=50 * len(train_dataset),
             alpha=0.1
         )
+    
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule, clipnorm=1.0)    
+    # optimizer = tfa.optimizers.AdamW(weight_decay=1e-4, learning_rate=lr_schedule)
 
     def spectral_convergence_loss(y_true, y_pred):
         return tf.norm(y_true - y_pred, ord='fro', axis=[-2, -1]) / tf.norm(y_true, ord='fro', axis=[-2, -1])
@@ -222,7 +236,7 @@ def compile_model(model):
         mse = tf.reduce_mean(tf.square(y_true - y_pred))
         sc_loss = spectral_convergence_loss(y_true, y_pred)
         log_loss = log_mel_loss(y_true, y_pred)
-        return mse + 0.5 * sc_loss + 0.5 * log_loss
+        return mse + 0.5 * sc_loss + 0.1 * log_loss
     
     model.compile(optimizer=optimizer,
                   loss=combined_loss,
@@ -289,22 +303,22 @@ callbacks = [
     # TensorBoard(log_dir="logs", histogram_freq=1)  # 👈 This logs training info
 ]
 
-# history = model.fit(
-#     train_dataset,
-#     epochs=150,
-#     validation_data=val_dataset,
-#     callbacks=callbacks
-# )
+history = model.fit(
+    train_dataset,
+    epochs=150,
+    validation_data=val_dataset,
+    callbacks=callbacks
+)
 
-# # Save model & history
-# model.save('model/2/best_model_cnn_9f_log.keras')
-# model.save_weights('model/2/best_model_cnn_9f_log.weights.h5')
-# history_df = pd.DataFrame(history.history)
-# history_df.to_csv('model/2/best_model_cnn_9f_log.csv', index=False)
+# Save model & history
+model.save('model/2/best_model_cnn_9f_log.keras')
+model.save_weights('model/2/best_model_cnn_9f_log.weights.h5')
+history_df = pd.DataFrame(history.history)
+history_df.to_csv('model/2/best_model_cnn_9f_log.csv', index=False)
 
-# # ==================== Evaluation =====================
-# test_loss = model.evaluate(test_dataset)
-# print(f"Test loss: {test_loss}")
+# ==================== Evaluation =====================
+test_loss = model.evaluate(test_dataset)
+print(f"Test loss: {test_loss}")
 
 
 
@@ -319,6 +333,9 @@ callbacks = [
 
 
 '''Model: "functional"   making custom attention layer 
+
+These bankers wishing for more specific information
+
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ Layer (type)                  ┃ Output Shape              ┃         Param # ┃ Connected to               ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩

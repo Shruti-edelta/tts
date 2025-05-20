@@ -5,3 +5,4 @@ model/
 .vscode/
 checkpoints/
 logs/
+Montreal-Forced-Aligner-3.2.2/
