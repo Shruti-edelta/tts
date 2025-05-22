@@ -322,10 +322,11 @@ class G2PConverter:
 
         for pred in preds:
             phoneme_token = np.argmax(pred, axis=-1)
-            # phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>'] and id != self.phn2idx['<eos>']]
-            phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>']]
+            phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>'] and id != self.phn2idx['<eos>']]
+            # phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>']]
             phns = [self.idx2phn.get(i, "<unk>") for i in phoneme_token if i != self.phn2idx['<pad>']]
-            flat_results.append(phoneme_token)
+            # flat_results.append(phoneme_token)
+            flat_results.append(phns)
         # Step 5: Reconstruct sentence-level phoneme list
         # print(flat_results)
         results = []
@@ -334,9 +335,10 @@ class G2PConverter:
             # print(sentence)
             num_words = len(sentence)
             sentence_phonemes = flat_results[i:i+num_words]  # List of lists
+            # print(sentence_phonemes)  
             # sentence_flat =[self.phn2idx['<sos>']] + [ph for word in sentence_phonemes for ph in word] + [self.phn2idx['<eos>']] #  sos(40) + Flatten word-level phonemes + eos(41)
-            sentence_flat =[ph for word in sentence_phonemes for ph in word] #  Flatten word-level phonemes 
-            results.append(sentence_flat)
+            # sentence_flat =[ph for word in sentence_phonemes for ph in word] #  Flatten word-level phonemes 
+            results.append(sentence_phonemes)
             i += num_words
         return results
 

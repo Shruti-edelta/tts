@@ -130,8 +130,8 @@ print("predicted_mel(input): ",predicted_mel)
 mean,std = np.load("dataset/acoustic_dataset/mel_mean_std.npy")
 audio=mel_to_audio_griffin_lim(predicted_mel, mean, std)
 print("audio: ",audio)
-# sf.write('audio/cnn/best_model_9f_t2_log_e8_f.wav', audio, 22050) 
-sf.write('audio/cnn/best_model_9f_t2_ef.wav', audio, 22050) 
+sf.write('audio/cnn/best_model_9f_t2_log_padd_e9_f.wav', audio, 22050) 
+# sf.write('audio/cnn/best_model_9f_t2_ef.wav', audio, 22050) 
 
 # Plot it
 plt.imshow(predicted_mel.T, aspect='auto', origin='lower')

@@ -70,7 +70,6 @@ def create_dataset_fast(texts, mel_paths, batch_size=32, shuffle=True):
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
     return dataset
 
-
 # @tf.keras.utils.register_keras_serializable()
 @register_keras_serializable()
 class CropLayer(tf.keras.layers.Layer):
@@ -260,7 +259,6 @@ def compile_model(model):
 # g2p = G2PConverter(load_model=False)
 # vocab_size = len(g2p.phn2idx)
 
-
 df_train = pd.read_csv('dataset/acoustic_dataset/train.csv', usecols=['Phoneme_text', 'Read_npy'])
 df_val = pd.read_csv('dataset/acoustic_dataset/val.csv', usecols=['Phoneme_text', 'Read_npy'])
 df_test = pd.read_csv('dataset/acoustic_dataset/test.csv', usecols=['Phoneme_text', 'Read_npy'])
@@ -283,7 +281,6 @@ print(g2p.phn2idx)
 vocab_size = len(g2p.phn2idx)
 
 # ==================== Build & Train =====================
-
 
 # model = build_acoustic_model(vocab_size, input_length)
 model = build_acoustic_model(vocab_size)
@@ -311,7 +308,7 @@ history = model.fit(
 )
 
 # Save model & history
-model.save('model/2/best_model_cnn_9f_log.keras')
+model.save('model/2/model_cnn_9f_log.keras')
 model.save_weights('model/2/best_model_cnn_9f_log.weights.h5')
 history_df = pd.DataFrame(history.history)
 history_df.to_csv('model/2/best_model_cnn_9f_log.csv', index=False)

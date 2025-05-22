@@ -6,3 +6,5 @@ model/
 checkpoints/
 logs/
 Montreal-Forced-Aligner-3.2.2/
+output/
+mfa/
