@@ -303,12 +303,12 @@ class G2PConverter:
             phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>']]
             phoneme_seq = [self.idx2phn.get(i, "<unk>") for i in phoneme_token if i != self.phn2idx['<pad>']] 
             # pre_phoneme.append(phoneme_seq)
-            predicted_phonemes.append(phoneme_token)
+            predicted_phonemes.append(phoneme_seq)
         # print("====",pre_phoneme)
         # predicted_phonemes.append([self.phn2idx['<eos>']])
         # print("======",predicted_phonemes)
         flat_phonemes = [p for word in predicted_phonemes for p in word] 
-        return flat_phonemes
+        return predicted_phonemes
     
     def batch_predict(self, texts):
         # Step 1: Preprocess each sentence into list of words
@@ -355,6 +355,7 @@ if __name__ == "__main__":
     # raw_text="He likewise indicated he was disenchanted with Russia."
     # raw_text="After summarizing the Bureau's investigative interest in Oswald prior to the assassination, J. Edgar Hoover concluded that, quote,"
     raw_text="Printing, in the only sense with which we are at present concerned, differs from most if not from all the arts and crafts represented in the Exhibition"
+    # raw_text="directly under the chapel, in which there were three cells, used either for the confinement of disorderly and refractory prisoners"
     normalized_text = normalizer.normalize_text(raw_text)
     print("Original Text:", raw_text)
     print("Normalized Text:", normalized_text)

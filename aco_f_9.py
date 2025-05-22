@@ -171,11 +171,6 @@ def build_acoustic_model(vocab_size, input_length=163, mel_dim=80, mel_len=865, 
         x = layers.Add()([x, residual])
 
     query = layers.GlobalAveragePooling1D()(x)
-    # Try using a learnable query token:
-    # query_token = self.add_weight("query_token", shape=(1, 1, 1024), initializer="random_normal", trainable=True)
-    # batch_size = tf.shape(x)[0]
-    # query = tf.tile(query_token, [batch_size, 1, 1])
-    # context, _ = self.attention(query, x, mask=mask)  # You may need to adapt shape
     x = AttentionContextLayer(units=256, input_length=input_length)([query, x, mask])
 
     # Upsample
@@ -243,21 +238,6 @@ def compile_model(model):
     return model
 # ==================== Load Data =====================
 
-# df = pd.read_csv('dataset/acoustic_dataset/tts_data_LJ.csv', usecols=['Phoneme_text', 'Read_npy'])
-# texts = df['Phoneme_text'].apply(ast.literal_eval).values
-# mel_spectrograms = df['Read_npy'].values
-# input_length = max([len(seq) for seq in texts])+32
-
-# texts_str = [str(seq) for seq in texts]
-# texts_train, texts_temp, mel_train, mel_temp = train_test_split(texts_str, mel_spectrograms, test_size=0.2, random_state=33)
-# texts_val, texts_test, mel_val, mel_test = train_test_split(texts_temp, mel_temp, test_size=0.3, random_state=33)
-
-# train_dataset = create_dataset_fast(texts_train, mel_train, input_length=input_length)
-# val_dataset = create_dataset_fast(texts_val, mel_val, input_length=input_length)
-# test_dataset = create_dataset_fast(texts_test, mel_test, input_length=input_length)
-
-# g2p = G2PConverter(load_model=False)
-# vocab_size = len(g2p.phn2idx)
 
 df_train = pd.read_csv('dataset/acoustic_dataset/train.csv', usecols=['Phoneme_text', 'Read_npy'])
 df_val = pd.read_csv('dataset/acoustic_dataset/val.csv', usecols=['Phoneme_text', 'Read_npy'])
@@ -324,6 +304,21 @@ print(f"Test loss: {test_loss}")
 
 
 
+# df = pd.read_csv('dataset/acoustic_dataset/tts_data_LJ.csv', usecols=['Phoneme_text', 'Read_npy'])
+# texts = df['Phoneme_text'].apply(ast.literal_eval).values
+# mel_spectrograms = df['Read_npy'].values
+# input_length = max([len(seq) for seq in texts])+32
+
+# texts_str = [str(seq) for seq in texts]
+# texts_train, texts_temp, mel_train, mel_temp = train_test_split(texts_str, mel_spectrograms, test_size=0.2, random_state=33)
+# texts_val, texts_test, mel_val, mel_test = train_test_split(texts_temp, mel_temp, test_size=0.3, random_state=33)
+
+# train_dataset = create_dataset_fast(texts_train, mel_train, input_length=input_length)
+# val_dataset = create_dataset_fast(texts_val, mel_val, input_length=input_length)
+# test_dataset = create_dataset_fast(texts_test, mel_test, input_length=input_length)
+
+# g2p = G2PConverter(load_model=False)
+# vocab_size = len(g2p.phn2idx)
 
 
 

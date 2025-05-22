@@ -66,4 +66,15 @@ def export_mfa_files(df, output_dir="dataset/LJSpeech"):
 
   mfa train dataset/mfa_data1 dataset/mfa_data1/dict.txt output/acoustic_model --no_lda --single_speaker --clean
   
+mfa align \
+  dataset/mfa_data1 \
+  output/dict.dict \
+  output/acoustic_model.zip \
+  output/LJSpeech_alignments \
+  --use_phone_input \
+  --single_speaker \
+  --clean \
+  --debug \
+  --output_format csv
+
   '''
