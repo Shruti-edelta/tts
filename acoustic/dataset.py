@@ -97,16 +97,21 @@ class LJSpeechPreprocessor:
 
     def load_metadata(self):
         df = pd.read_csv(self.metadata_path, sep='|', usecols=['File_Name', 'Normalize_text'])
-
+        # rows_all_null = df[df.isnull().any(axis=1)]
+        # print(rows_all_null)
         df.dropna(inplace=True)
-        # print(df)
-        # df=df['Normalize_text']
-        return df[:5]
+        return df
+
+    def pad_sequence(self,seq):
+        if len(seq) < self.max_phoneme_length:
+            return seq + [0] * (self.max_phoneme_length - len(seq))
+        else:
+            return seq[:self.max_phoneme_length]
 
     def normalize_and_phonemize(self, df):
         df['Normalize_text'] = df['Normalize_text'].apply(self.normalizer.normalize_text)
         df['Normalize_text'] = [r['normalized_text'] for r in df['Normalize_text']]
-        print(df['Normalize_text'].values)
+        # print(df['Normalize_text'].values)
         results = []
 
         for i in tqdm(range(0, len(df), self.batch_size), desc="Converting Text to Phonemes", unit="batch"):
@@ -120,42 +125,45 @@ class LJSpeechPreprocessor:
 
         df['Phoneme_text'] = results
         self.max_phoneme_length= max([len(seq) for seq in df['Phoneme_text'].values])
-        print("max_input_length: ",self.max_phoneme_length)
-        def pad_sequence(seq,input_length=self.max_phoneme_length):
-            if len(seq) < input_length:
-                return seq + [0] * (input_length - len(seq))
-            else:
-                return seq[:input_length]
-            
-        df['Phoneme_text'] = df['Phoneme_text'].apply(pad_sequence)
+        print("max_input_length: ",self.max_phoneme_length)        
+
+        df['Phoneme_text'] = df['Phoneme_text'].apply(self.pad_sequence)
         print(" ** padded text lenghth: ",set(df['Phoneme_text'].apply(len)))
         return df
     
-    def extract_duration(self,aligner_files):
+    def extract_duration(self,aligner_files,df):
         durations = []
-
         for file in aligner_files:
             align_path = os.path.join(self.dataset_path, "LJSpeech_alignments", file)
-
+            # aling_df = pd.read_csv(align_path)
             try:
-                df = pd.read_csv(align_path)
-                phone_df = df[df["Type"] == "words"]
+                aling_df = pd.read_csv(align_path)
+                # aling_df = pd.read_csv('dataset/LJSpeech/LJSpeech_alignments/LJ049-0097.csv')
+                phone_df = aling_df[aling_df["Type"] == "words"]
                 phone_df = phone_df[~phone_df["Label"].isin(["spn", "[bracketed]", "<eos>"])]
-                # print(df_align.head())
                 phone_df['duration'] = phone_df['End'] - phone_df['Begin']
                 phone_df['duration_frames'] = round(phone_df['duration'] / self.hop_length_sec)
-                print(phone_df)
-
-                # durations.append({
-                #     'file': file.replace('.csv', ''),
-                #     'phonemes': df_align['phoneme'].tolist(),
-                #     'durations': df_align['duration'].tolist()
-                # })
-
+                duration_list=phone_df['duration_frames'].tolist()
+                durations.append(duration_list)
             except Exception as e:
                 print(f"Error processing {align_path}: {e}")
+                file_id=file[:-4]
+                print(file_id)
+                idx = df.index[df['File_Name'] == file_id]
+                df = df.drop(idx, axis='index')
+                print(f"drop row {file_id}")
+                # print(df)
+        print(df)
+        # print(durations)
+        df['duration']=durations       
+            
+        df['duration'] = df['duration'].apply(self.pad_sequence)
+
+        print(len(df.at[1,"Phoneme_text"]),len(df.at[1,"duration"]))
         
-        return phone_df
+        df_filtered = df[df.apply(lambda row: len(row["Phoneme_text"]) == len(row["duration"]), axis=1)]
+        print(f"Filtered {len(df_filtered)} valid entries out of {len(df)} total.")
+        return df
 
     def add_npy_paths(self, df):
         df['Read_npy'] = df['File_Name'].apply(lambda x: os.path.join(self.audio_folder, f"{x}.npy"))
@@ -163,19 +171,33 @@ class LJSpeechPreprocessor:
 
     def split_and_save(self, df, output_dir):
         os.makedirs(output_dir, exist_ok=True)
-        df['Phoneme_text'] = df['Phoneme_text'].apply(str)  # make string before splitting
-        texts = df['Phoneme_text'].values
+        # df['Phoneme_text'] = df['Phoneme_text'].apply(str)  # make string before splitting
+        texts_and_durations = df[['Phoneme_text','duration']].values
         mels = df['Read_npy'].values
 
-        texts_train, texts_temp, mel_train, mel_temp = train_test_split(texts, mels, test_size=0.2, random_state=42)
-        texts_val, texts_test, mel_val, mel_test = train_test_split(texts_temp, mel_temp, test_size=0.3, random_state=42)
+        td_train, td_temp, mel_train, mel_temp = train_test_split(texts_and_durations, mels, test_size=0.2, random_state=42)
+        td_val, td_test, mel_val, mel_test = train_test_split(td_temp, mel_temp, test_size=0.3, random_state=42)
 
-        pd.DataFrame({'Phoneme_text': texts_train, 'Read_npy': mel_train}).to_csv(os.path.join(output_dir, 'train.csv'), index=False)
-        pd.DataFrame({'Phoneme_text': texts_val, 'Read_npy': mel_val}).to_csv(os.path.join(output_dir, 'val.csv'), index=False)
-        pd.DataFrame({'Phoneme_text': texts_test, 'Read_npy': mel_test}).to_csv(os.path.join(output_dir, 'test.csv'), index=False)
+            # Helper to unpack and save
+        def save_split(td, mel, filename):
+            phoneme_texts = [x[0] for x in td]
+            durations = [x[1] for x in td]
+            pd.DataFrame({
+                'Phoneme_text': phoneme_texts,
+                'duration': durations,
+                'Read_npy': mel
+            }).to_csv(os.path.join(output_dir, filename), index=False)
+
+        save_split(td_train, mel_train, 'train.csv')
+        save_split(td_val, mel_val, 'val.csv')
+        save_split(td_test, mel_test, 'test.csv')
+
+        # pd.DataFrame({'Phoneme_text': texts_train, 'Read_npy': mel_train}).to_csv(os.path.join(output_dir, 'train.csv'), index=False)
+        # pd.DataFrame({'Phoneme_text': texts_val, 'Read_npy': mel_val}).to_csv(os.path.join(output_dir, 'val.csv'), index=False)
+        # pd.DataFrame({'Phoneme_text': texts_test, 'Read_npy': mel_test}).to_csv(os.path.join(output_dir, 'test.csv'), index=False)
         
         print("✅ Data split into train, val, and test.")
-        return texts_train, mel_train,mels  # for normalization
+        return td_train, mel_train, mels  # for normalization
 
     def compute_and_save_mel_stats(self, mel_paths, out_path="mel_mean_std.npy"):
         all_mels = []
@@ -224,31 +246,34 @@ class LJSpeechPreprocessor:
         df = self.normalize_and_phonemize(df)
     
         aligner_files = [f"{fname}.csv" for fname in df['File_Name']]
-        p_df=self.extract_duration(aligner_files)
-        print(p_df)
+        df=self.extract_duration(aligner_files,df)
+        print("=====",df)
 
-        # print("🎧 Generating and saving mel spectrograms...")
-        # audio_files = [f"{fname}.wav" for fname in df['File_Name']]
-        # self.save_mel_spectrograms(audio_files)
+        rows_all_null = df[df.isnull().any(axis=1)]
+        print(rows_all_null)
+        
+        print("🎧 Generating and saving mel spectrograms...")
+        audio_files = [f"{fname}.wav" for fname in df['File_Name']]
+        self.save_mel_spectrograms(audio_files)
 
-        # print("📁 Attaching .npy paths...")
-        # df = self.add_npy_paths(df)
+        print("📁 Attaching .npy paths...")
+        df = self.add_npy_paths(df)
 
-        # print(f"💾 Saving dataset to CSV: {self.output_csv}")
-        # os.makedirs(os.path.dirname(self.output_csv), exist_ok=True)
-        # df.to_csv(self.output_csv, index=False)
-        # # df.to_csv('dataset/acoustic_dataset/analysis.csv', index=False)
+        print(f"💾 Saving dataset to CSV: {self.output_csv}")
+        os.makedirs(os.path.dirname(self.output_csv), exist_ok=True)
+        df.to_csv(self.output_csv, index=False)
+        # df.to_csv('dataset/acoustic_dataset/analysis.csv', index=False)
 
-        # texts_train, mel_train ,mels = self.split_and_save(df, 'dataset/acoustic_dataset')
-        # g_mean,g_std = self.compute_and_save_mel_stats(mel_train, out_path="dataset/acoustic_dataset/mel_mean_std.npy")
+        texts_train, mel_train ,mels = self.split_and_save(df, 'dataset/acoustic_dataset')
+        g_mean,g_std = self.compute_and_save_mel_stats(mel_train, out_path="dataset/acoustic_dataset/mel_mean_std.npy")
 
-        # self.normalize_padd_mels(mels,g_mean,g_std)
+        self.normalize_padd_mels(mels,g_mean,g_std)
 
         print("✅ Preprocessing complete.")
 
 # === Usage Example ===
 if __name__ == "__main__":
-    from acoustic.text_preprocess import TextNormalizer,G2PConverter
+    from text_preprocess import TextNormalizer,G2PConverter
 
     preprocessor = LJSpeechPreprocessor(
         dataset_path="dataset/LJSpeech/",

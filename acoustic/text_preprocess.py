@@ -9,11 +9,11 @@ import ast
 from num2words import num2words
 
 
-import nltk
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
-# from nltk.tokenize import word_tokenize
-from nltk import word_tokenize, pos_tag
+# import nltk
+# nltk.download('punkt')
+# nltk.download('averaged_perceptron_tagger')
+# # from nltk.tokenize import word_tokenize
+# from nltk import word_tokenize, pos_tag
 
 
 class TextNormalizer:
@@ -172,9 +172,9 @@ class TextNormalizer:
     # def tag_pos(self,text):
     #     return pos_tag(text)
 
-    def tag_pos(self, text):
-        tokens = word_tokenize(text)
-        return pos_tag(tokens)
+    # def tag_pos(self, text):
+    #     tokens = word_tokenize(text)
+    #     return pos_tag(tokens)
 
     def normalize_text(self, text):
         # text = text.lower()  # Lowercase the text
@@ -182,7 +182,7 @@ class TextNormalizer:
         text = self.expand_abbreviations(text)  # Expand abbreviations
         text = self.remove_extra_spaces(text)  # Remove extra spaces
         text = self.normalize_unicode(text)  # Normalize unicode
-        pos_tags = self.tag_pos(text)
+        # pos_tags = self.tag_pos(text)
 
         # text = self.normalize_time(text)  # Normalize time
 
@@ -194,7 +194,6 @@ class TextNormalizer:
         # return text
         return {
             "normalized_text":text,
-            "pos_tags":pos_tags,
         }
     
 
@@ -303,12 +302,12 @@ class G2PConverter:
             phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>']]
             phoneme_seq = [self.idx2phn.get(i, "<unk>") for i in phoneme_token if i != self.phn2idx['<pad>']] 
             # pre_phoneme.append(phoneme_seq)
-            predicted_phonemes.append(phoneme_seq)
+            predicted_phonemes.append(phoneme_token)
         # print("====",pre_phoneme)
         # predicted_phonemes.append([self.phn2idx['<eos>']])
         # print("======",predicted_phonemes)
         flat_phonemes = [p for word in predicted_phonemes for p in word] 
-        return predicted_phonemes
+        return flat_phonemes
     
     def batch_predict(self, texts):
         # Step 1: Preprocess each sentence into list of words
@@ -326,7 +325,7 @@ class G2PConverter:
             # phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>']]
             phns = [self.idx2phn.get(i, "<unk>") for i in phoneme_token if i != self.phn2idx['<pad>']]
             # flat_results.append(phoneme_token)
-            flat_results.append(phns)
+            flat_results.append(phoneme_token)
         # Step 5: Reconstruct sentence-level phoneme list
         # print(flat_results)
         results = []
@@ -337,8 +336,8 @@ class G2PConverter:
             sentence_phonemes = flat_results[i:i+num_words]  # List of lists
             # print(sentence_phonemes)  
             # sentence_flat =[self.phn2idx['<sos>']] + [ph for word in sentence_phonemes for ph in word] + [self.phn2idx['<eos>']] #  sos(40) + Flatten word-level phonemes + eos(41)
-            # sentence_flat =[ph for word in sentence_phonemes for ph in word] #  Flatten word-level phonemes 
-            results.append(sentence_phonemes)
+            sentence_flat =[ph for word in sentence_phonemes for ph in word] #  Flatten word-level phonemes 
+            results.append(sentence_flat)
             i += num_words
         return results
 
