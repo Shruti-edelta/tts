@@ -97,7 +97,6 @@ def mel_to_audio(mel_np):
     return audio
 
 
-
 def tts_infer(text, acoustic_model, vocoder):
     phonemes = text_to_phonemes(text)
     ids = phonemes_to_ids(phonemes)
