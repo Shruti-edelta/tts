@@ -10,6 +10,7 @@ import soundfile as sf
 import librosa
 import keras
 from keras.config import enable_unsafe_deserialization
+from tensorflow.keras import layers
 enable_unsafe_deserialization()
 
 # @tf.keras.utils.register_keras_serializable()
@@ -68,7 +69,59 @@ class AttentionContextLayer(tf.keras.layers.Layer):
         context_expanded = tf.expand_dims(context_vector, axis=1)
         context_expanded = tf.tile(context_expanded, [1, self.input_length, 1])
         return tf.concat([values, context_expanded], axis=-1)
-    
+@register_keras_serializable()
+class LocationSensitiveAttention(tf.keras.layers.Layer):
+    def __init__(self, units, filters=32, kernel_size=31, **kwargs):
+        super(LocationSensitiveAttention, self).__init__(**kwargs)
+        self.units = units
+        self.filters = filters
+        self.kernel_size = kernel_size
+        self.W_query = layers.Dense(units)
+        self.W_values = layers.Dense(units)
+        self.W_location = layers.Dense(units)
+        self.V = layers.Dense(1)
+        self.location_conv = layers.Conv1D(filters, kernel_size, padding='same', use_bias=False)
+
+    def call(self, query, values, prev_attention, mask=None):
+        # prev_attention: (batch_size, seq_len)
+        query = tf.expand_dims(query, 1)  # (batch_size, 1, dim)
+
+        # Location features
+        f = self.location_conv(tf.expand_dims(prev_attention, -1))  # (batch_size, seq_len, filters)
+        location_features = self.W_location(f)
+
+        # Score calculation
+        score = self.V(tf.nn.tanh(
+            self.W_query(query) + self.W_values(values) + location_features))  # (batch, seq_len, 1)
+        score = tf.squeeze(score, -1)
+
+        if mask is not None:
+            score += (1.0 - tf.cast(mask, tf.float32)) * -1e9
+
+        attention_weights = tf.nn.softmax(score, axis=-1)
+        context_vector = tf.matmul(tf.expand_dims(attention_weights, 1), values)
+        context_vector = tf.squeeze(context_vector, axis=1)
+
+        return context_vector, attention_weights
+
+@register_keras_serializable()
+class LocationAttentionContextLayer(tf.keras.layers.Layer):
+    def __init__(self, units, input_length, **kwargs):
+        super(LocationAttentionContextLayer, self).__init__(**kwargs)
+        self.units = units
+        self.input_length = input_length
+
+    def build(self, input_shape):
+        self.attention = LocationSensitiveAttention(units=self.units)
+        super().build(input_shape)
+
+    def call(self, inputs):
+        query, values, prev_attention, mask = inputs
+        context_vector, attention_weights = self.attention(query, values, prev_attention, mask=mask)
+        context_expanded = tf.expand_dims(context_vector, axis=1)
+        context_expanded = tf.tile(context_expanded, [1, self.input_length, 1])
+        return tf.concat([values, context_expanded], axis=-1), attention_weights
+
 @tf.keras.utils.register_keras_serializable()
 class PositionalEncoding(tf.keras.layers.Layer):
     def __init__(self, input_length, embed_dim, **kwargs):
@@ -109,8 +162,9 @@ g2p = G2PConverter("model/1/3model_cnn.keras")
 normalizer=TextNormalizer()
 
 text = "This is a test"
-text = "However, it now laid down in plain language and with precise details the requirements of a good jail system."
-text = "The first step is to identify the problem and its root cause."
+text="my name is shruti"
+# text = "However, it now laid down in plain language and with precise details the requirements of a good jail system."
+# text = "The first step is to identify the problem and its root cause."
 text="The second step we have taken in the restoration of normal business enterprise"
 # text = "The second step "#is to develop a plan to address the problem."  # ****
 # text = "The third step is to implement the plan."
@@ -123,11 +177,13 @@ print(phonemes)
 
 padded = pad_sequences([phonemes], maxlen=163, padding='post')[0]
 input_tensor = tf.convert_to_tensor([padded], dtype=tf.int32)
-
-predicted_mel = best_model.predict(input_tensor,verbose=0)[0]
+att_input=tf.zeros((1,tf.shape(input_tensor)[1]), dtype=tf.float32)
+print("=======",input_tensor.shape,att_input)
+predicted_mel = best_model.predict((input_tensor,att_input),verbose=0)[0]
+# predicted_mel = best_model.predict(input_tensor,verbose=0)[0]
 print("predicted_mel(input): ",predicted_mel)
 
-mean,std = np.load("dataset/acoustic_dataset/mel_mean_std.npy")
+mean,std = np.load("dataset/acoustic_dataset(9f_eos_notduration)/mel_mean_std.npy")
 audio=mel_to_audio_griffin_lim(predicted_mel, mean, std)
 print("audio: ",audio)
 sf.write('audio/cnn/best_model_9f_t2_log_padd_e9_f.wav', audio, 22050) 

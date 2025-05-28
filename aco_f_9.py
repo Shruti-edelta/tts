@@ -141,7 +141,7 @@ class LearningRatePlotter(tf.keras.callbacks.Callback):
         self.lrs = []
 
 # def build_acoustic_model(vocab_size, input_length, mel_dim=80, mel_len=1024, embed_dim=256):
-def build_acoustic_model(vocab_size, input_length=163, mel_dim=80, mel_len=865, embed_dim=256):
+def build_acoustic_model(vocab_size, input_length=163, mel_dim=80, mel_len=870, embed_dim=256):
     inputs = layers.Input(shape=(None,), name='phoneme_input')
 
     # Embedding + Positional Encoding
@@ -184,9 +184,9 @@ def build_acoustic_model(vocab_size, input_length=163, mel_dim=80, mel_len=865, 
 
     # Post-net for refinement
     postnet = mel_output
-    for _ in range(5):
-        postnet = layers.Conv1D(filters=mel_dim, kernel_size=5, padding='same', activation='tanh')(postnet)
-        postnet = layers.BatchNormalization()(postnet)
+    # for _ in range(5):
+    #     postnet = layers.Conv1D(filters=mel_dim, kernel_size=5, padding='same', activation='tanh')(postnet)
+    #     postnet = layers.BatchNormalization()(postnet)
 
     for i in range(5):
         activation = 'tanh' if i < 4 else None
@@ -239,9 +239,9 @@ def compile_model(model):
 # ==================== Load Data =====================
 
 
-df_train = pd.read_csv('dataset/acoustic_dataset/train.csv', usecols=['Phoneme_text', 'Read_npy'])
-df_val = pd.read_csv('dataset/acoustic_dataset/val.csv', usecols=['Phoneme_text', 'Read_npy'])
-df_test = pd.read_csv('dataset/acoustic_dataset/test.csv', usecols=['Phoneme_text', 'Read_npy'])
+df_train = pd.read_csv('dataset/acoustic_dataset(9f_eos_notduration)/train.csv', usecols=['Phoneme_text', 'Read_npy'])
+df_val = pd.read_csv('dataset/acoustic_dataset(9f_eos_notduration)/val.csv', usecols=['Phoneme_text', 'Read_npy'])
+df_test = pd.read_csv('dataset/acoustic_dataset(9f_eos_notduration)/test.csv', usecols=['Phoneme_text', 'Read_npy'])
 
 texts_train = df_train['Phoneme_text'].values
 mel_train = df_train['Read_npy'].values
@@ -266,6 +266,11 @@ vocab_size = len(g2p.phn2idx)
 model = build_acoustic_model(vocab_size)
 model = compile_model(model)
 model.summary()
+
+print(train_dataset) 
+for x, y in train_dataset.take(1):  # Show 5 samples
+    tf.print("Input:", x)
+    tf.print("Target:", y)
 
 # Set up log directory with timestamp
 log_dir = os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
