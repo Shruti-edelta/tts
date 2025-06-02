@@ -84,20 +84,19 @@ def remove_silence_wav(input_path, silence_thresh=-40, min_silence_len=500):
 
 def audio_to_mel_spectrogram(audio_file):
     # print(librosa.get_duration(y=y,sr=sr))
-    y, sr = librosa.load(audio_file)
-    # y, sr = remove_silence_wav(audio_file)
-    # # y,sr=librosa
+    # y, sr = librosa.load(audio_file)
+    y, sr = remove_silence_wav(audio_file)
     print("silence remove 1: ",y)    
-    # print(librosa.get_duration(y=y,sr=sr))
-    # sf.write("check_clean1.wav", y, sr)
+    print(librosa.get_duration(y=y,sr=sr))
+    sf.write("check_clean1.wav", y, sr)
     if y is None:
         print(f"⚠️ No speech detected in {audio_file}")
         return None
 
-    # y, _ = librosa.effects.trim(y, top_db=30)  # Optional: refine silence
-    # print("trim: ",y)
-    # sf.write("check_t2.wav", y, sr)
-    # print(librosa.get_duration(y=y,sr=sr))
+    y, _ = librosa.effects.trim(y, top_db=30)  # Optional: refine silence
+    print("trim: ",y)
+    sf.write("check_t2.wav", y, sr)
+    print(librosa.get_duration(y=y,sr=sr))
 
     reduced_noise = nr.reduce_noise(y=y, sr=sr)
     print("reduce_noise: ",reduced_noise)

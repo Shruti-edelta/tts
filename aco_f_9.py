@@ -141,7 +141,7 @@ class LearningRatePlotter(tf.keras.callbacks.Callback):
         self.lrs = []
 
 # def build_acoustic_model(vocab_size, input_length, mel_dim=80, mel_len=1024, embed_dim=256):
-def build_acoustic_model(vocab_size, input_length=163, mel_dim=80, mel_len=870, embed_dim=256):
+def build_acoustic_model(vocab_size, input_length=870, mel_dim=80, mel_len=865, embed_dim=256):
     inputs = layers.Input(shape=(None,), name='phoneme_input')
 
     # Embedding + Positional Encoding
@@ -173,10 +173,10 @@ def build_acoustic_model(vocab_size, input_length=163, mel_dim=80, mel_len=870, 
     query = layers.GlobalAveragePooling1D()(x)
     x = AttentionContextLayer(units=256, input_length=input_length)([query, x, mask])
 
-    # Upsample
-    x = layers.Conv1DTranspose(256, kernel_size=5, strides=2, padding='same', activation='relu')(x) # (None, 336, 256) (None, 400, 256)
-    x = layers.Conv1DTranspose(128, kernel_size=3, strides=2, padding='same', activation='relu')(x) # (None, 800, 128)
-    x = layers.Conv1DTranspose(64, kernel_size=3, strides=2, padding='same', activation='relu')(x) # (None, 1600, 128) 
+    # # Upsample
+    # x = layers.Conv1DTranspose(256, kernel_size=5, strides=2, padding='same', activation='relu')(x) # (None, 336, 256) (None, 400, 256)
+    # x = layers.Conv1DTranspose(128, kernel_size=3, strides=2, padding='same', activation='relu')(x) # (None, 800, 128)
+    # x = layers.Conv1DTranspose(64, kernel_size=3, strides=2, padding='same', activation='relu')(x) # (None, 1600, 128) 
     x = CropLayer(mel_len)(x)
 
     # Initial mel output
@@ -239,9 +239,9 @@ def compile_model(model):
 # ==================== Load Data =====================
 
 
-df_train = pd.read_csv('dataset/acoustic_dataset(9f_eos_notduration)/train.csv', usecols=['Phoneme_text', 'Read_npy'])
-df_val = pd.read_csv('dataset/acoustic_dataset(9f_eos_notduration)/val.csv', usecols=['Phoneme_text', 'Read_npy'])
-df_test = pd.read_csv('dataset/acoustic_dataset(9f_eos_notduration)/test.csv', usecols=['Phoneme_text', 'Read_npy'])
+df_train = pd.read_csv('dataset/acoustic_dataset/train.csv', usecols=['Phoneme_text', 'Read_npy'])
+df_val = pd.read_csv('dataset/acoustic_dataset/val.csv', usecols=['Phoneme_text', 'Read_npy'])
+df_test = pd.read_csv('dataset/acoustic_dataset/test.csv', usecols=['Phoneme_text', 'Read_npy'])
 
 texts_train = df_train['Phoneme_text'].values
 mel_train = df_train['Read_npy'].values
@@ -269,8 +269,8 @@ model.summary()
 
 print(train_dataset) 
 for x, y in train_dataset.take(1):  # Show 5 samples
-    tf.print("Input:", x)
-    tf.print("Target:", y)
+    tf.print("Input:", x.shape)
+    tf.print("Target:", y.shape)
 
 # Set up log directory with timestamp
 log_dir = os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))

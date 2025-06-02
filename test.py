@@ -157,12 +157,12 @@ def mel_to_audio_griffin_lim(mel_db, mean, std, sr=22050, n_fft=2048, hop_length
     print(librosa.get_duration(y=audio))
     return audio
 
-best_model = tf.keras.models.load_model("model/2/best_model_cnn_9f_log.keras", compile=False,custom_objects={'CropLayer': CropLayer})
+best_model = tf.keras.models.load_model("model/2/9f/model_cnn_9f_log.keras", compile=False,custom_objects={'CropLayer': CropLayer})
 g2p = G2PConverter("model/1/3model_cnn.keras")
 normalizer=TextNormalizer()
 
 text = "This is a test"
-text="my name is shruti"
+text="mungra"
 # text = "However, it now laid down in plain language and with precise details the requirements of a good jail system."
 # text = "The first step is to identify the problem and its root cause."
 text="The second step we have taken in the restoration of normal business enterprise"
@@ -175,15 +175,16 @@ normalized_text = normalizer.normalize_text(text)
 phonemes=g2p.predict(normalized_text['normalized_text'])
 print(phonemes)
 
-padded = pad_sequences([phonemes], maxlen=163, padding='post')[0]
+# padded = pad_sequences([phonemes], maxlen=163, padding='post')[0]
+padded = pad_sequences([phonemes], maxlen=870, padding='post')[0]
 input_tensor = tf.convert_to_tensor([padded], dtype=tf.int32)
 att_input=tf.zeros((1,tf.shape(input_tensor)[1]), dtype=tf.float32)
-print("=======",input_tensor.shape,att_input)
-predicted_mel = best_model.predict((input_tensor,att_input),verbose=0)[0]
-# predicted_mel = best_model.predict(input_tensor,verbose=0)[0]
+# print("=======",input_tensor.shape,att_input)
+# predicted_mel = best_model.predict((input_tensor,att_input),verbose=0)[0]
+predicted_mel = best_model.predict(input_tensor,verbose=0)[0]
 print("predicted_mel(input): ",predicted_mel)
 
-mean,std = np.load("dataset/acoustic_dataset(9f_eos_notduration)/mel_mean_std.npy")
+mean,std = np.load("dataset/acoustic_dataset/mel_mean_std.npy")
 audio=mel_to_audio_griffin_lim(predicted_mel, mean, std)
 print("audio: ",audio)
 sf.write('audio/cnn/best_model_9f_t2_log_padd_e9_f.wav', audio, 22050) 
@@ -207,13 +208,14 @@ phoneme_seq = df_test['Phoneme_text'].apply(ast.literal_eval).values
 mel_spectrograms_test = df_test['Read_npy'].values
 
 test_text, test_mel = preprocess_testdata(phoneme_seq, mel_spectrograms_test)
-x_test = np.expand_dims(test_text[1], axis=0)  # Adding a batch dimension
-y_true = np.expand_dims(test_mel[1], axis=0)  # Adding a batch dimension)
+x_test = np.expand_dims(test_text[6], axis=0)  # Adding a batch dimension
+y_true = np.expand_dims(test_mel[6], axis=0)  # Adding a batch dimension)
 
 # test_loss = model.evaluate(x_test, y_true)
 # print(f"Test loss: {test_loss}")
 print(x_test)
 y_pred = best_model.predict(x_test)
+# y_pred = best_model.predict((x_test,att_input))
 
 print("Input shape:", x_test.shape)
 print("True mel shape:", y_true.shape)
