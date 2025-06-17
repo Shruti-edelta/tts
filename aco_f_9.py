@@ -4,15 +4,11 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 import ast
-import pickle
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
 from acoustic.text_preprocess import G2PConverter
 from tensorflow.keras import layers
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.metrics import CosineSimilarity
-from tensorflow.keras.preprocessing.sequence import pad_sequences
 from keras.saving import register_keras_serializable
 # import tensorflow_addons as tfa
 
@@ -141,7 +137,7 @@ class LearningRatePlotter(tf.keras.callbacks.Callback):
         self.lrs = []
 
 # def build_acoustic_model(vocab_size, input_length, mel_dim=80, mel_len=1024, embed_dim=256):
-def build_acoustic_model(vocab_size, input_length=870, mel_dim=80, mel_len=865, embed_dim=256):
+def build_acoustic_model(vocab_size, input_length=165, mel_dim=80, mel_len=865, embed_dim=256):
     inputs = layers.Input(shape=(None,), name='phoneme_input')
 
     # Embedding + Positional Encoding
@@ -157,9 +153,9 @@ def build_acoustic_model(vocab_size, input_length=870, mel_dim=80, mel_len=865, 
     # BiLSTM stack
     x = layers.Bidirectional(layers.LSTM(512, return_sequences=True,dropout=0.3))(x, mask=mask)
     # x = layers.Dropout(0.3)(x)
-    x = layers.Bidirectional(layers.LSTM(512, return_sequences=True,dropout=0.3))(x, mask=mask)
+    x = layers.Bidirectional(layers.LSTM(512, return_sequences=True,dropout=0.2))(x, mask=mask)
     # x = layers.Dropout(0.3)(x)
-    x = layers.Bidirectional(layers.LSTM(128, return_sequences=True,dropout=0.3))(x, mask=mask)
+    x = layers.Bidirectional(layers.LSTM(128, return_sequences=True,dropout=0.2))(x, mask=mask)
     # x = layers.Dropout(0.3)(x)
 
     # Residual CNN blocks
@@ -167,16 +163,17 @@ def build_acoustic_model(vocab_size, input_length=870, mel_dim=80, mel_len=865, 
         residual = x
         x = layers.Conv1D(filters=256, kernel_size=5, padding='same', dilation_rate=2, activation='relu')(x)
         x = layers.LayerNormalization()(x)
-        x = layers.Dropout(0.2)(x)
+        x = layers.Dropout(0.3)(x)
         x = layers.Add()([x, residual])
 
     query = layers.GlobalAveragePooling1D()(x)
     x = AttentionContextLayer(units=256, input_length=input_length)([query, x, mask])
 
     # # Upsample
-    # x = layers.Conv1DTranspose(256, kernel_size=5, strides=2, padding='same', activation='relu')(x) # (None, 336, 256) (None, 400, 256)
-    # x = layers.Conv1DTranspose(128, kernel_size=3, strides=2, padding='same', activation='relu')(x) # (None, 800, 128)
-    # x = layers.Conv1DTranspose(64, kernel_size=3, strides=2, padding='same', activation='relu')(x) # (None, 1600, 128) 
+    x = layers.Conv1DTranspose(256, kernel_size=5, strides=2, padding='same', activation='relu')(x) # (None, 336, 256) (None, 400, 256) (None, 330, 256)
+    x = layers.Conv1DTranspose(128, kernel_size=3, strides=2, padding='same', activation='relu')(x) # (None, 800, 128) (None, 660, 128)
+    x = layers.Conv1DTranspose(128, kernel_size=3, strides=2, padding='same', activation='relu')(x) # (None, 1600, 128) (None, 1320, 128)
+    x = layers.Conv1DTranspose(128, kernel_size=3, strides=1, padding='same', activation='relu')(x) # (None, 1600, 128)  (None, 1320, 128)
     x = CropLayer(mel_len)(x)
 
     # Initial mel output
@@ -188,12 +185,12 @@ def build_acoustic_model(vocab_size, input_length=870, mel_dim=80, mel_len=865, 
     #     postnet = layers.Conv1D(filters=mel_dim, kernel_size=5, padding='same', activation='tanh')(postnet)
     #     postnet = layers.BatchNormalization()(postnet)
 
-    for i in range(5):
-        activation = 'tanh' if i < 4 else None
+    for i in range(7):
+        activation = 'tanh' if i < 6 else None
         postnet = layers.Conv1D(mel_dim, kernel_size=5, padding='same', activation=activation)(postnet)
         if i < 4:
             postnet = layers.BatchNormalization()(postnet)
-            postnet = layers.Dropout(0.1)(postnet)
+            postnet = layers.Dropout(0.3)(postnet)
 
     mel_output = layers.Add(name="refined_mel_output")([mel_output, postnet])
 
@@ -230,7 +227,7 @@ def compile_model(model):
         mse = tf.reduce_mean(tf.square(y_true - y_pred))
         sc_loss = spectral_convergence_loss(y_true, y_pred)
         log_loss = log_mel_loss(y_true, y_pred)
-        return mse + 0.5 * sc_loss + 0.1 * log_loss
+        return (0.5 * mse) + (0.7 * sc_loss) + (0.1 * log_loss)
     
     model.compile(optimizer=optimizer,
                   loss=combined_loss,
@@ -252,8 +249,8 @@ mel_val = df_val['Read_npy'].values
 texts_test= df_test['Phoneme_text'].values
 mel_test = df_test['Read_npy'].values
 
-train_dataset = create_dataset_fast(texts_train, mel_train )
-val_dataset = create_dataset_fast(texts_val, mel_val )
+train_dataset = create_dataset_fast(texts_train, mel_train)
+val_dataset = create_dataset_fast(texts_val, mel_val)
 test_dataset = create_dataset_fast(texts_test, mel_test)
 
 g2p = G2PConverter(load_model=False)
@@ -277,8 +274,8 @@ log_dir = os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1,write_graph=True,write_images=True)
 
 callbacks = [
-    EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, verbose=1),
-    ModelCheckpoint('model/2/best_model_cnn_9f_log.keras', monitor='val_loss', save_best_only=True, verbose=1),
+    # EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, verbose=1),
+    ModelCheckpoint('model/2/best_model_cnn_r_EarlyStopping.keras', monitor='val_loss', save_best_only=True, verbose=1),
     LRSchedulerLogger(),
     LearningRatePlotter(),
     tensorboard_callback , # 👈 Add this line,
@@ -293,16 +290,14 @@ history = model.fit(
 )
 
 # Save model & history
-model.save('model/2/model_cnn_9f_log.keras')
-model.save_weights('model/2/best_model_cnn_9f_log.weights.h5')
+model.save('model/2/best_model_cnn_r_EarlyStopping.keras')
+model.save_weights('model/2/best_model_cnn_r_EarlyStopping.weights.h5')
 history_df = pd.DataFrame(history.history)
-history_df.to_csv('model/2/best_model_cnn_9f_log.csv', index=False)
+history_df.to_csv('model/2/best_model_cnn_r_EarlyStopping.csv', index=False)
 
 # ==================== Evaluation =====================
 test_loss = model.evaluate(test_dataset)
 print(f"Test loss: {test_loss}")
-
-
 
 
 

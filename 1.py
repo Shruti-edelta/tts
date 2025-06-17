@@ -29,7 +29,6 @@ id_to_phoneme = {v: k for k, v in phoneme_vocab.items()}
 def phonemes_to_ids(phonemes):
     return [phoneme_to_id.get(p, phoneme_to_id['SPN']) for p in phonemes]
 
-
 import librosa
 import numpy as np
 

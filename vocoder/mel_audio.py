@@ -5,7 +5,7 @@ import soundfile as sf
 # from acoustic.text_preprocess import G2PConverter
 
 
-y, sr = librosa.load("../LJ001-0001.wav", sr=None)
+y, sr = librosa.load("audio/LJ001-0001.wav", sr=None)
 print(librosa.get_duration(y=y,sr=sr))
 # audio, _ = librosa.effects.trim(y, top_db=20)
 # reduced_noise = nr.reduce_noise(y=y, sr=sr)
@@ -85,7 +85,7 @@ def audio_to_mel_spectrogram(audio_file):
     print(mel_db.shape)
     return y,sr,mel_db,mean ,std
 
-audio,sr,mel_db,mean,std=audio_to_mel_spectrogram("../LJ001-0001.wav")
+audio,sr,mel_db,mean,std=audio_to_mel_spectrogram("audio/LJ001-0001.wav")
 print("norm_audio : ",audio,sr)
 sf.write("check_norm.wav", audio, sr)
 print("Printing, in the only sense with which we are at present concerned, differs from most if not from all the arts and crafts represented in the Exhibition")
@@ -137,9 +137,6 @@ mel_db = np.load("../dataset/LJSpeech/wavs/LJ001-0001.npy")
 mean,std = np.load("../dataset/acoustic_dataset/mel_mean_std.npy")
 audio = mel_to_audio_griffin_lim(mel_db,mean,std)
 sf.write("reconstructed_griffin.wav", audio, sr)
-
-
-
 
 
 '''

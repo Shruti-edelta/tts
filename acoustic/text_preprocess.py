@@ -7,7 +7,8 @@ import contractions
 import tensorflow as tf
 import ast
 from num2words import num2words
-
+from nltk.corpus import cmudict
+# import copy
 
 # import nltk
 # nltk.download('punkt')
@@ -18,30 +19,57 @@ from num2words import num2words
 
 class TextNormalizer:
     def __init__(self):
-        self.abbreviations = {"Mr.": "Mister",
-                        "Mrs.": "Misses",
-                        "Dr.": "Doctor",
-                        "No.": "Number",
-                        "St.": "Street",
-                        "Co.": "Company",
-                        "Jr.": "Junior",
-                        "Sr.": "Senior",
-                        "Maj.": "Major",
-                        "Gen.": "General",
-                        "Drs.": "Doctors",
-                        "Rev.": "Reverend",
-                        "Lt.": "Lieutenant",
-                        "Hon.": "Honorable",
-                        "Sgt.": "Sergeant",
-                        "Capt.": "Captain",
-                        "Esq.": "Esquire",
-                        "Ltd.": "Limited",
-                        "Col.": "Colonel",
-                        "Ft.": "Fort",
-                        "Ave.": "Avenue",
-                        "etc.": "et cetera",
-                        "i.e.": "that is",
-                        "e.g.": "for example",}
+        self.abbreviations = [(re.compile('\\b%s\\.' % x[0], re.IGNORECASE), x[1]) for x in [
+                ('mrs', 'misess'),
+                ('mr', 'mister'),
+                ('dr', 'doctor'),
+                ('drs', 'doctors'),
+                ('st', 'saint'),
+                ('co', 'company'),
+                ('jr', 'junior'),
+                ('sr','senior'),
+                ('maj', 'major'),
+                ('gen', 'general'),
+                ('drs', 'doctors'),
+                ('rev', 'reverend'),
+                ('lt', 'lieutenant'),
+                ('hon', 'honorable'),
+                ('sgt', 'sergeant'),
+                ('capt', 'captain'),
+                ('esq', 'esquire'),
+                ('ltd', 'limited'),
+                ('col', 'colonel'),
+                ('ft', 'fort'),
+                ('no', 'number'),
+                # ('st','street'),
+                ('ave','avenue'),
+                # ("i.e.", "that is"),
+            ]]
+
+        # self.abbreviations = {"Mr.": "Mister",
+        #                 "Mrs.": "Misses",
+        #                 "Dr.": "Doctor",
+        #                 "No.": "Number",
+        #                 "St.": "Street",
+        #                 "Co.": "Company",
+        #                 "Jr.": "Junior",
+        #                 "Sr.": "Senior",
+        #                 "Maj.": "Major",
+        #                 "Gen.": "General",
+        #                 "Drs.": "Doctors",
+        #                 "Rev.": "Reverend",
+        #                 "Lt.": "Lieutenant",
+        #                 "Hon.": "Honorable",
+        #                 "Sgt.": "Sergeant",
+        #                 "Capt.": "Captain",
+        #                 "Esq.": "Esquire",
+        #                 "Ltd.": "Limited",
+        #                 "Col.": "Colonel",
+        #                 "Ft.": "Fort",
+        #                 "Ave.": "Avenue",
+        #                 "etc.": "et cetera",
+        #                 "i.e.": "that is",
+        #                 "e.g.": "for example",}
         # self.special_words = {
         #                 "https": "h t t p s",
         #                 "http": "h t t p",
@@ -51,12 +79,15 @@ class TextNormalizer:
     def expand_abbreviations(self, text):
         """Expands known abbreviations in the text."""
         # for abbr, expansion in self.abbreviations.items():
-        #     # text = re.sub(r'\b'+abbr, expansion+" ", text)
-        #     text = re.sub(r'\b' + re.escape(abbr) + r'\b', expansion, text)  LJ002-0055
+        for abbr, expansion in self.abbreviations:
+            # text = re.sub(r'\b'+abbr, expansion+" ", text)
+            # text = re.sub(r'\b' + re.escape(abbr) + r'\b', expansion, text)  # LJ002-0055
+            text = re.sub(abbr, expansion, text)
 
-        for abbr, expansion in self.abbreviations.items():
-            pattern = re.compile(re.escape(abbr), flags=re.IGNORECASE)
-            text = pattern.sub(expansion, text)
+        # for abbr, expansion in self.abbreviations.items():
+        #     # pattern = re.compile(re.escape(abbr), flags=re.IGNORECASE)
+        #     pattern = re.compile(f"{abbr} ", flags=re.IGNORECASE)
+        #     text = pattern.sub(expansion, text)
         return text
 
     # def convert_numbers_to_words(self, text):
@@ -178,23 +209,23 @@ class TextNormalizer:
 
     def normalize_text(self, text):
         # text = text.lower()  # Lowercase the text
-        text = self.expand_contractions(text)  # Expand contractions
-        text = self.expand_abbreviations(text)  # Expand abbreviations
-        text = self.remove_extra_spaces(text)  # Remove extra spaces
+        text = self.expand_contractions(text)  # Expand contractions        
+        text = self.expand_abbreviations(text)  # Expand abbreviations        
+        text = self.remove_extra_spaces(text)  # Remove extra spaces        
         text = self.normalize_unicode(text)  # Normalize unicode
         # pos_tags = self.tag_pos(text)
-
         # text = self.normalize_time(text)  # Normalize time
 
         text = self.expand_urls_and_emails(text)  # Expand URLs and emails
         text = self.expand_alphanumeric(text) 
-        text = self.number_to_words(text)  # Convert numbers to words
-
-        text = self.remove_punctuation(text)  # Remove punctuation
+        text = self.number_to_words(text)  # Convert numbers to words        
+        text = self.remove_punctuation(text)  # Remove punctuation        
         # return text
-        return {
-            "normalized_text":text,
-        }
+        return text
+        
+        # return {
+        #     "normalized_text":text,
+        # }
     
 
     # def normalize_text_for_g2p(self, text):
@@ -236,18 +267,19 @@ class TextNormalizer:
     #                 phonemes.append(word)
     #     return phonemes
 
-
 class G2PConverter:
     # def __init__(self, model_path=None, vocab_path="dataset/G2P_dataset/cmu_dict_no_stress.csv", max_len=33, load_model=True):
     # def __init__(self, model_path=None, vocab_path="dataset/G2P_dataset/cmu_dict_pun_stress.csv", max_len=33, load_model=True):
     def __init__(self, model_path=None, vocab_path="dataset/G2P_dataset/cmu_dict_with_stress.csv", max_len=33, load_model=True):
         self.max_len = max_len
+        self.phoneme_dict=cmudict.dict()
+        
         if load_model and model_path:
             self.model = tf.keras.models.load_model(model_path)
         self._load_vocab(vocab_path)
 
     def _load_vocab(self, vocab_path):
-        df = pd.read_csv(vocab_path)
+        df = pd.read_csv(vocab_path)        
         self.words = df["word"].tolist()
         # self.phonemes = self._phoneme_string_to_list(df["phonemes"].tolist())
         self.phonemes = df["phonemes"].apply(ast.literal_eval).tolist()
@@ -266,6 +298,7 @@ class G2PConverter:
         self.phn2idx = {p: i + 1 for i, p in enumerate(phoneme_set)}
         self.phn2idx['<pad>'] = 0
         self.phn2idx['<sos>'] = len(self.phn2idx)
+        self.phn2idx['<eow>'] = len(self.phn2idx)
         self.phn2idx['<eos>'] = len(self.phn2idx)
         self.idx2phn = {i: p for p, i in self.phn2idx.items()}
         print(self.phn2idx)
@@ -279,69 +312,163 @@ class G2PConverter:
             s = [token2idx.get(c, token2idx['<pad>']) for c in seq]
             encoded.append(s)
         max_len = maxlen or max(len(s) for s in encoded)
+        # print(max_len)
         padded = [s + [token2idx['<pad>']] * (max_len - len(s)) for s in encoded]
         # print(padded)
         return np.array(padded)
 
     def preprocess_input(self, text):
         text = text.lower()
-        words = text.split()
-        encoded_words = [self._encode_sequences([w], self.char2idx, maxlen=self.max_len) for w in words]
-        return encoded_words
+        words = text.strip().split()
+        # encoded_words = [self._encode_sequences([w], self.char2idx, maxlen=self.max_len) for w in words]
+        return words
+
+    def word_to_phonemes(self, word):
+        # print("***",word)
+        phoneme = self.phoneme_dict.get(word, None)
+        # print(phoneme)
+        if phoneme is not None:
+            phoneme_token=self._encode_sequences([phoneme[0]], self.phn2idx) 
+            return phoneme[0],phoneme_token[0].tolist()
+
+        encoded_words = self._encode_sequences([word], self.char2idx, maxlen=self.max_len) 
+        # print("encoded_word: ",encoded_words)
+        preds = self.model.predict(encoded_words, verbose=0)
+        phoneme_token = np.argmax(preds, axis=-1)[0]
+        # # print(phoneme_token,self.phn2idx['<pad>'])
+        # phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>']]
+        phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>'] and id != self.phn2idx['<eow>']]
+        phoneme = [self.idx2phn.get(i, "<unk>") for i in phoneme_token if i != self.phn2idx['<pad>']] 
+        return phoneme,phoneme_token
 
     def predict(self, text):
-        # print(text)
-        encoded_words = self.preprocess_input(text)
+        words = self.preprocess_input(text)
         # predicted_phonemes = [[self.phn2idx['<sos>']]]
         predicted_phonemes = []
         pre_phoneme=[]
-        for w in encoded_words:
-            preds = self.model.predict(w, verbose=0)        # (1, 33, 42)
-            phoneme_token = np.argmax(preds, axis=-1)[0]      # (33,) /(1, 33)
-            # phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>'] and id != self.phn2idx['<eos>']]
-            phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>']]
-            phoneme_seq = [self.idx2phn.get(i, "<unk>") for i in phoneme_token if i != self.phn2idx['<pad>']] 
-            # pre_phoneme.append(phoneme_seq)
-            predicted_phonemes.append(phoneme_seq)
-        # print("====",pre_phoneme)
-        # predicted_phonemes.append([self.phn2idx['<eos>']])
-        # print("======",predicted_phonemes)
+
+        for w in words:
+            phonemes,phoneme_token = self.word_to_phonemes(w)
+            # p = copy.deepcopy(phonemes)
+            p = phoneme_token.copy()
+            # p = phonemes            
+            p.append(self.phn2idx['<eow>'])
+            predicted_phonemes.append(p)
+
+        predicted_phonemes.append([self.phn2idx['<eos>']])
         flat_phonemes = [p for word in predicted_phonemes for p in word] 
-        return predicted_phonemes
+        return flat_phonemes
     
     def batch_predict(self, texts):
-        # Step 1: Preprocess each sentence into list of words
-        batch_encoded = [self.preprocess_input(t) for t in texts]  # List[List[np.array]]
-        # Step 2: Flatten all words from all sentences for batch prediction
-        flat_inputs = [item for sentence in batch_encoded for item in sentence]
-        # Step 3: Run prediction on the flat input
-        preds = self.model.predict(np.vstack(flat_inputs), verbose=0)
-        # Step 4: Convert predictions back to phonemes
-        flat_results = []
+        # Step 1: Normalize input
+        # preprocessed_sentences = [self.g2p.preprocess_input(text) for text in texts]
+        preprocessed_sentences = [self.preprocess_input(t) for t in texts]
+        # print(preprocessed_sentences)
+        # Step 2: Identify known (in dict) vs OOV (need prediction) words
+        flat_words = [word for sent in preprocessed_sentences for word in sent]
+        # print(flat_words)
+        known = []
+        oov = []
+        for word in flat_words:
+            if word not in self.phoneme_dict:
+                oov.append(word)
+            # else:
+        # print(known)
+        # Step 3: Predict phonemes for OOV words
+        oov_unique = list(set(oov))
+        oov_encoded = self._encode_sequences(oov_unique, self.char2idx, maxlen=self.max_len)    
+        preds = self.model.predict(oov_encoded, verbose=0)
 
-        for pred in preds:
+        oov_results = {}
+        for word, pred in zip(oov_unique, preds):
             phoneme_token = np.argmax(pred, axis=-1)
-            phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>'] and id != self.phn2idx['<eos>']]
+            phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>'] and id != self.phn2idx['<eow>']]
             # phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>']]
-            phns = [self.idx2phn.get(i, "<unk>") for i in phoneme_token if i != self.phn2idx['<pad>']]
-            # flat_results.append(phoneme_token)
-            flat_results.append(phoneme_token)
-        # Step 5: Reconstruct sentence-level phoneme list
-        # print(flat_results)
-        results = []
+            # phns = [self.idx2phn.get(i, "<unk>") for i in phoneme_token]
+            # phns.append(self.phn2idx['<eow>'])
+            phoneme_token.append(self.phn2idx['<eow>'])
+            # phns.append('<eow>')
+            oov_results[word] = phoneme_token
+
+        # print(oov_results)
+        # Step 4: Reconstruct sentences
+        result = []
         i = 0
-        for sentence in batch_encoded:
-            # print(sentence)
-            num_words = len(sentence)
-            sentence_phonemes = flat_results[i:i+num_words]  # List of lists
-            # print(sentence_phonemes)  
-            # sentence_flat =[self.phn2idx['<sos>']] + [ph for word in sentence_phonemes for ph in word] + [self.phn2idx['<eos>']] #  sos(40) + Flatten word-level phonemes + eos(41)
-            sentence_flat =[ph for word in sentence_phonemes for ph in word] #  Flatten word-level phonemes 
-            results.append(sentence_flat)
-            i += num_words
-        return results
+        for sent in preprocessed_sentences:
+            sentence_phonemes = []
+            for word in sent:
+                if word in self.phoneme_dict:
+                    # p=self.phoneme_dict[word][0]
+                    # phns=p.copy()
+                    # print(phns)
+                    encoded_phoneme=self._encode_sequences([self.phoneme_dict[word][0]], self.phn2idx)[0].tolist()
+                    # print(encoded_phoneme,self.phoneme_dict[word][0])
+                    encoded_phoneme.append(self.phn2idx['<eow>'])
+                    # phns.append('<eow>')
+                    # print(encoded_phoneme)
+                    sentence_phonemes += encoded_phoneme 
+                else:
+                    sentence_phonemes += oov_results[word]
+                i += 1
+            sentence_phonemes.append(self.phn2idx['<eos>'])
+            result.append(sentence_phonemes)
+
+        return result
+
+    # def batch_predict(self, texts):
+    #     # Step 1: Preprocess each sentence into list of words
+    #     print(texts)
+    #     batch_encoded = [self.preprocess_input(t) for t in texts]  # List[List[np.array]]
+    #     print(batch_encoded)
+    #     # Step 2: Flatten all words from all sentences for batch prediction
+    #     flat_inputs = [item for sentence in batch_encoded for item in sentence]
+    #     print(flat_inputs)
+    #     # Step 3: Run prediction on the flat input
+    #     preds = self.model.predict(np.vstack(flat_inputs), verbose=1)
+    #     print(preds)
+    #     # Step 4: Convert predictions back to phonemes
+    #     flat_results = []
+
+    #     for pred in preds:
+    #         phoneme_token = np.argmax(pred, axis=-1)
+    #         phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>'] and id != self.phn2idx['<eow>']]
+    #         # phoneme_token = [int(id) for id in phoneme_token if id != self.phn2idx['<pad>']]
+    #         phoneme_token.append(self.phn2idx['<eow>'])
+    #         phns = [self.idx2phn.get(i, "<unk>") for i in phoneme_token if i != self.phn2idx['<pad>']]
+    #         # print("===",phns)
+    #         # flat_results.append(phoneme_token)
+    #         flat_results.append(phns)
+    #     # Step 5: Reconstruct sentence-level phoneme list
+    #     # print(flat_results)
+    #     results = []
+    #     i = 0
+    #     for sentence in batch_encoded:
+    #         # print(sentence)
+    #         num_words = len(sentence)
+    #         sentence_phonemes = flat_results[i:i+num_words]  # List of lists
+    #         # print("******",sentence_phonemes)  
+    #         # sentence_flat =[self.phn2idx['<sos>']] + [ph for word in sentence_phonemes for ph in word] + [self.phn2idx['<eos>']] #  sos(40) + Flatten word-level phonemes + eos(41)
+    #         sentence_flat =[ph for word in sentence_phonemes for ph in word] + [self.phn2idx['<eos>']] #  sos(40) + Flatten word-level phonemes + eos(41)
+    #         # sentence_flat =[ph for word in sentence_phonemes for ph in word] 
+    #         results.append(sentence_flat)
+    #         # print(results)
+    #         i += num_words
+    #     return results
 
 if __name__ == "__main__":
+    #     # Load trained model
+    # g2p_model = G2PConverter(
+    #     model_path="model/1/3model_cnn.keras",
+    #     vocab_path="dataset/G2P_dataset/cmu_dict_with_stress.csv",
+    #     load_model=True
+    # )
+
+    # # Load CMU dictionary
+    # cmu_dict = CMUDictCSV("dataset/G2P_dataset/cmu_dict_with_stress.csv")
+
+    # Create hybrid G2P system
+    # hybrid_g2p = HybridG2P(g2p_model=g2p_model, cmu_dict=cmu_dict)
+
     normalizer = TextNormalizer()
     raw_text = "Dr. Smith is going to the store. Visit http://www.example.com/test123//shruti.com/page or email me at test@example.com! I'm excited, No. 1 fan! c34545"
     # raw_text="Dr. Smith earned $5.6M in 2023."
@@ -353,32 +480,36 @@ if __name__ == "__main__":
     # raw_text="The numbers soon increased, however, and by 1811 had again risen to 629; and Mr. Neild was told that there had been at one time a4"
     # raw_text="He likewise indicated he was disenchanted with Russia."
     # raw_text="After summarizing the Bureau's investigative interest in Oswald prior to the assassination, J. Edgar Hoover concluded that, quote,"
-    raw_text="Printing, in the only sense with which we are at present concerned, differs from most if not from all the arts and crafts represented in the Exhibition"
+    # raw_text="Printing, in the only sense with which we are at present concerned, differs from most if not from all the arts and crafts represented in the Exhibition"
     # raw_text="directly under the chapel, in which there were three cells, used either for the confinement of disorderly and refractory prisoners"
-    raw_text="harshvi mungra"       # [['HH', 'AA1', 'R', 'SH', 'V', 'IY0', '<eos>'], ['M', 'AH1', 'N', 'G', 'R', 'AH0', '<eos>']]
+    # raw_text="harshvi mungra"       # [['HH', 'AA1', 'R', 'SH', 'V', 'IY0', '<eos>'], ['M', 'AH1', 'N', 'G', 'R', 'AH0', '<eos>']]
     normalized_text = normalizer.normalize_text(raw_text)
     print("Original Text:", raw_text)
     print("Normalized Text:", normalized_text)
 
     g2p=G2PConverter("model/1/3model_cnn.keras")
-    phonemes=g2p.predict(normalized_text['normalized_text'])
+    # phonemes=g2p.predict(normalized_text['normalized_text'])
+    phonemes=g2p.predict(normalized_text)
     print(phonemes)
 
-    # texts = [
-    #     "Printing, in the only sense with which we are at present concerned, differs from most if not from all the arts and crafts represented in the Exhibition",
-    #     "Hello world!",
-    #     "The quick brown fox jumps over the lazy dog.",
-    #     "G2P batch test.",
-    #     "the recommendations we have here suggested would greatly advance the security of the office without any impairment of our fundamental liberties."
-    # ]
+    texts = [
+        "Printing, in the only sense with which we are at present concerned, differs from most if not from all the arts and crafts represented in the Exhibition",
+        "Hello world! testone",
+        "The quick brown fox jumps over the lazy dog.",
+        "long narrow rooms -- one thirty-six feet, six twenty-three feet, and the eighth eighteen i.e. e.g.",
+        "G2P batch test.",
+        "in being comparatively modern.",
+        "the recommendations we have here suggested would greatly advance the security of the office without any one two impairment of our fundamental liberties."
+    ]
 
-#     normalized = [normalizer.normalize_text(t) for t in texts]
-#     phonemes = g2p.batch_predict(normalized)
-#     # print('========',phonemes)
-#     for t, p in zip(texts, phonemes):
-#         print(f"Text: {t}")
-#         print(f"Phonemes: {p}")
-#         print("---")
+    normalized = [normalizer.normalize_text(t) for t in texts]
+    print(normalized)
+    phonemes = g2p.batch_predict(normalized)
+    # print('========',phonemes)
+    for t, p in zip(texts, phonemes):
+        print(f"Text: {t}")
+        print(f"Phonemes: {p}")
+        print("---")
 
     # for word, phon in zip(normalized_text['normalized_text'].split(), phonemes):
     #     print(f"{word}: {' '.join(phon)}")
