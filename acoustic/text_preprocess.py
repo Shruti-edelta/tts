@@ -16,6 +16,10 @@ from nltk.corpus import cmudict
 # # from nltk.tokenize import word_tokenize
 # from nltk import word_tokenize, pos_tag
 
+_pad = "_"
+_punctuation = "!'(),.:;? "
+_special = "-"
+_silences = ["@sp", "@spn", "@sil"]
 
 class TextNormalizer:
     def __init__(self):
@@ -215,7 +219,6 @@ class TextNormalizer:
         text = self.normalize_unicode(text)  # Normalize unicode
         # pos_tags = self.tag_pos(text)
         # text = self.normalize_time(text)  # Normalize time
-
         text = self.expand_urls_and_emails(text)  # Expand URLs and emails
         text = self.expand_alphanumeric(text) 
         text = self.number_to_words(text)  # Convert numbers to words        
@@ -266,17 +269,18 @@ class TextNormalizer:
     #             else:
     #                 phonemes.append(word)
     #     return phonemes
-
 class G2PConverter:
     # def __init__(self, model_path=None, vocab_path="dataset/G2P_dataset/cmu_dict_no_stress.csv", max_len=33, load_model=True):
     # def __init__(self, model_path=None, vocab_path="dataset/G2P_dataset/cmu_dict_pun_stress.csv", max_len=33, load_model=True):
     def __init__(self, model_path=None, vocab_path="dataset/G2P_dataset/cmu_dict_with_stress.csv", max_len=33, load_model=True):
         self.max_len = max_len
         self.phoneme_dict=cmudict.dict()
-        
+        # print(self.phoneme_dict.keys())
         if load_model and model_path:
             self.model = tf.keras.models.load_model(model_path)
         self._load_vocab(vocab_path)
+        
+        # pd.DataFrame({'keys': [i for i in self.phoneme_dict.keys() if len(i)==1]}).to_csv("key_val.csv", index=False)
 
     def _load_vocab(self, vocab_path):
         df = pd.read_csv(vocab_path)        
@@ -492,24 +496,24 @@ if __name__ == "__main__":
     phonemes=g2p.predict(normalized_text)
     print(phonemes)
 
-    texts = [
-        "Printing, in the only sense with which we are at present concerned, differs from most if not from all the arts and crafts represented in the Exhibition",
-        "Hello world! testone",
-        "The quick brown fox jumps over the lazy dog.",
-        "long narrow rooms -- one thirty-six feet, six twenty-three feet, and the eighth eighteen i.e. e.g.",
-        "G2P batch test.",
-        "in being comparatively modern.",
-        "the recommendations we have here suggested would greatly advance the security of the office without any one two impairment of our fundamental liberties."
-    ]
+    # texts = [
+    #     "Printing, in the only sense with which we are at present concerned, differs from most if not from all the arts and crafts represented in the Exhibition",
+    #     "Hello world! testone",
+    #     "The quick brown fox jumps over the lazy dog.",
+    #     "long narrow rooms -- one thirty-six feet, six twenty-three feet, and the eighth eighteen i.e. e.g.",
+    #     "G2P batch test.",
+    #     "in being comparatively modern.",
+    #     "the recommendations we have here suggested would greatly advance the security of the office without any one two impairment of our fundamental liberties."
+    # ]
 
-    normalized = [normalizer.normalize_text(t) for t in texts]
-    print(normalized)
-    phonemes = g2p.batch_predict(normalized)
-    # print('========',phonemes)
-    for t, p in zip(texts, phonemes):
-        print(f"Text: {t}")
-        print(f"Phonemes: {p}")
-        print("---")
+    # normalized = [normalizer.normalize_text(t) for t in texts]
+    # print(normalized)
+    # phonemes = g2p.batch_predict(normalized)
+    # # print('========',phonemes)
+    # for t, p in zip(texts, phonemes):
+    #     print(f"Text: {t}")
+    #     print(f"Phonemes: {p}")
+    #     print("---")
 
     # for word, phon in zip(normalized_text['normalized_text'].split(), phonemes):
     #     print(f"{word}: {' '.join(phon)}")

@@ -157,7 +157,7 @@ def mel_to_audio_griffin_lim(mel_db, mean, std, sr=22050, n_fft=2048, hop_length
     print(librosa.get_duration(y=audio))
     return audio
 
-best_model = tf.keras.models.load_model("model/2/best_model_cnn_r_EarlyStopping.keras", compile=False,custom_objects={'CropLayer': CropLayer})
+best_model = tf.keras.models.load_model("model/2/2best_model_cnn_r_EarlyStopping.keras", compile=False,custom_objects={'CropLayer': CropLayer})
 g2p = G2PConverter("model/1/3model_cnn.keras")
 normalizer=TextNormalizer()
 
@@ -167,12 +167,13 @@ text = "This is a test"
 # text = "The first step is to identify the problem and its root cause."
 text="The second step we have taken in the restoration of normal business enterprise"
 text="And it was a matter of course that in the Middle Ages when the craftsmen took care that beautiful form should always be a part of their productions whatever they were"
-text = "second step the second step "#is to develop a plan to address the problem."  # ****
+# text = "second step the second step "#is to develop a plan to address the problem."  # ****
 # text = "The third step is to implement the plan."
 # text="nandini"
 # text="hello world"
 # text="shree best second my shruti"
-text="At the time of his defection Oswald had said that neither his brother Robert"
+# text="At the time of his defection Oswald had said that neither his brother Robert"
+text="He likewise indicated he was disenchanted with Russia"
 
 normalized_text = normalizer.normalize_text(text)
 phonemes=g2p.predict(normalized_text)

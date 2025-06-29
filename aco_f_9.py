@@ -173,7 +173,7 @@ def build_acoustic_model(vocab_size, input_length=165, mel_dim=80, mel_len=865, 
     x = layers.Conv1DTranspose(256, kernel_size=5, strides=2, padding='same', activation='relu')(x) # (None, 336, 256) (None, 400, 256) (None, 330, 256)
     x = layers.Conv1DTranspose(128, kernel_size=3, strides=2, padding='same', activation='relu')(x) # (None, 800, 128) (None, 660, 128)
     x = layers.Conv1DTranspose(128, kernel_size=3, strides=2, padding='same', activation='relu')(x) # (None, 1600, 128) (None, 1320, 128)
-    x = layers.Conv1DTranspose(128, kernel_size=3, strides=1, padding='same', activation='relu')(x) # (None, 1600, 128)  (None, 1320, 128)
+    # x = layers.Conv1DTranspose(128, kernel_size=3, strides=1, padding='same', activation='relu')(x) # (None, 1600, 128)  (None, 1320, 128)
     x = CropLayer(mel_len)(x)
 
     # Initial mel output
@@ -185,8 +185,8 @@ def build_acoustic_model(vocab_size, input_length=165, mel_dim=80, mel_len=865, 
     #     postnet = layers.Conv1D(filters=mel_dim, kernel_size=5, padding='same', activation='tanh')(postnet)
     #     postnet = layers.BatchNormalization()(postnet)
 
-    for i in range(7):
-        activation = 'tanh' if i < 6 else None
+    for i in range(5):
+        activation = 'tanh' if i < 4 else None
         postnet = layers.Conv1D(mel_dim, kernel_size=5, padding='same', activation=activation)(postnet)
         if i < 4:
             postnet = layers.BatchNormalization()(postnet)
@@ -227,7 +227,7 @@ def compile_model(model):
         mse = tf.reduce_mean(tf.square(y_true - y_pred))
         sc_loss = spectral_convergence_loss(y_true, y_pred)
         log_loss = log_mel_loss(y_true, y_pred)
-        return (0.5 * mse) + (0.7 * sc_loss) + (0.1 * log_loss)
+        return (0.8*mse) + (0.7 * sc_loss) + (0.1 * log_loss)
     
     model.compile(optimizer=optimizer,
                   loss=combined_loss,
@@ -275,7 +275,7 @@ tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1,write_graph
 
 callbacks = [
     # EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, verbose=1),
-    ModelCheckpoint('model/2/best_model_cnn_r_EarlyStopping.keras', monitor='val_loss', save_best_only=True, verbose=1),
+    ModelCheckpoint('model/2/3best_model_cnn_r_EarlyStopping.keras', monitor='loss', save_best_only=True, verbose=1),
     LRSchedulerLogger(),
     LearningRatePlotter(),
     tensorboard_callback , # 👈 Add this line,
@@ -284,16 +284,16 @@ callbacks = [
 
 history = model.fit(
     train_dataset,
-    epochs=150,
+    epochs=500,
     validation_data=val_dataset,
     callbacks=callbacks
 )
 
 # Save model & history
-model.save('model/2/best_model_cnn_r_EarlyStopping.keras')
-model.save_weights('model/2/best_model_cnn_r_EarlyStopping.weights.h5')
+model.save('model/2/2best_model_cnn_r_EarlyStopping.keras')
+model.save_weights('model/2/2best_model_cnn_r_EarlyStopping.weights.h5')
 history_df = pd.DataFrame(history.history)
-history_df.to_csv('model/2/best_model_cnn_r_EarlyStopping.csv', index=False)
+history_df.to_csv('model/2/2best_model_cnn_r_EarlyStopping.csv', index=False)
 
 # ==================== Evaluation =====================
 test_loss = model.evaluate(test_dataset)
